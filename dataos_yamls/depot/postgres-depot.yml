@@ -1,0 +1,20 @@
+version: v1beta1
+name: retaildatabase
+type: depot
+tags:
+  - retaildb
+layer: user
+depot:
+  type: POSTGRESQL                                # Depot type
+  description: To write data to retaildbs postgresql database
+  external: true
+  connectionSecret:                               # Data source specific configurations
+    - acl: rw
+      type: key-value-properties
+      data:
+        username: retaildb
+        password: 5926b79a-296a-4d0e-af34-e4db7e6d6b58
+  spec:                                           # Data source specific configurations
+    host: usr-db-dataos-ck-oryx-stg.postgres.database.azure.com
+    port: 5432
+    database: retaildb

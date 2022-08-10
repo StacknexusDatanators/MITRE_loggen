@@ -1,0 +1,22 @@
+version: v1beta1
+name: mbabigquery    #depo will be referred with this name.
+type: depot          #resource type
+tags:                #helpful in classification and governance
+  - bigquery
+  - marketbasketanalysis
+owner: balaji         #(OPTIONAL) owner
+layer: user           #(OPTIONAL) user or operator
+depot:
+  type: BIGQUERY                                  # Depot type depends on the underlying data
+  description: contains market basket analysis dataset ingested from bigquery  #helps in stating the purpose
+  external: true       #data is managed externally or by DataOS
+  connectionSecret:                               # Data source specific configurations
+    - acl: rw          #Properties depend on the underlying data source
+      type: key-value-properties
+      data:
+        projectid: dataos-346613     #<project-name>
+        email: balaji@stacknexus.io
+      files:
+        json_keyfile: ./depot/secrets/dataos-346613-97989dfd4baa.json
+  spec:                                              # Data source specific configurations
+      project: dataos-346613

@@ -1,0 +1,74 @@
+version: v1beta1
+name: wf-redshift-retail-ts
+type: workflow
+description: Products data from redshift
+tags:
+  - redshift
+  - retail
+workflow:
+  dag:
+    - name: read-redshift-retail-ts
+      title: Read Redshift Retail Dataset
+      description: Reads the data from amazon redshift
+      spec:
+        tags:
+          - redshift
+          - connect
+        stack: flare:1.0
+        envs:
+          # HERA_SSL: "false"
+          # HERA_BASE_URL: "https://frankly-suited-oryx.dataos.io/hera"
+        flare:
+          driver:
+            coreLimit: 1200m
+            cores: 1
+            memory: 1000m
+          executor:
+            coreLimit: 1200m
+            cores: 1
+            instances: 5
+            memory: 1000m
+          job:
+            inputs:
+              - name: transactions_input
+                dataset: dataos://redshiftretail:public/transactions
+                format: redshift
+            logLevel: INFO
+            outputs:
+              - name: transactions_output
+                depot: dataos://icebase:merchandise_retail?acl=rw
+            steps:
+              - sink:
+                  - sequenceName: changed_datatypes
+                    datasetName: retail_transactions
+                    outputName: transactions_output
+                    outputType: Iceberg
+                    description: Transactions data from redshift
+                    title: Retail Transactions
+                    tags:
+                      - redshift
+                      - retail
+                    outputOptions:
+                      saveMode: overwrite
+                sequence:
+                  - name: changed_datatypes
+                    sql: select * from transactions_input
+                    functions:
+                    - name: drop
+                      columns:
+                      - __metadata_dataos_run_mapper_id
+                    - name: set_type
+                      columns:
+                        productprice: int
+                        quantity: int
+                        time: timestamp
+    - name: dataos-tool-from-rs
+      spec:
+        stack: toolbox
+        toolbox:
+          dataset: dataos://icebase:merchandise_retail/retail_transactions?acl=rw
+          action:
+            name: set_version
+            value: latest
+      dependencies:
+        - read-redshift-retail-ts

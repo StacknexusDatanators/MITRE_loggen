@@ -1,0 +1,65 @@
+---
+version: v1beta1
+name: dataquality-retail-customer
+type: workflow
+tags:
+  - Metrics
+  - Checks
+  - Retail
+description: The job performs metrics calculations and checks on retail customer data
+#owner: itspiyush
+workflow:
+  title: Metrics and checks
+  dag:
+    - name: dataquality-customer
+      title: Metrics and checks
+      description: The job performs metrics calculations and checks on customer data
+      spec:
+        stack: flare:1.0
+        envs:
+          SKIP_TOPOLOGY_REGISTRATION: "true"
+        tags:
+          - Metrics
+          - Retail
+        title: Metrics and checks
+        description: The job performs metrics calculations and checks on customer data
+        flare:
+          driver:
+            coreLimit: 4000m
+            cores: 2
+            memory: 6144m
+          executor:
+            coreLimit: 6000m
+            cores: 2
+            instances: 3
+            memory: 10000m
+          job:
+            explain: true
+            logLevel: INFO
+            #validate single input
+            inputs:
+              - name: input_df
+                dataset: dataos://icebase:merchandise_retail/retail_customer
+                format: iceberg
+            #override outputs, steps with specific template
+            assertions:
+              - column: age
+                tests:
+                  - min > 23
+                  - max < 99
+                  - missing_percentage < 0.2
+              - column: number_of_children
+                tests:
+                  - min > 0
+              - column: email_id
+                validFormat:
+                  regex: (?:[a-z0-9!#$%&'*+\=?^_`{|}~-]+(?:\.[a-z0-9!#$%&'*+\=?^_`{|}~-]+)*|"(?:[\x01-\x08\x0b\x0c\x0e-\x1f\x21\x23-\x5b\x5d-\x7f]|\\[\x01-\x09\x0b\x0c\x0e-\x7f])*")@(?:(?:[a-z0-9](?:[a-z0-9-]*[a-z0-9])?\.)+[a-z0-9](?:[a-z0-9-]*[a-z0-9])?|\[(?:(?:25[0-5]|2[0-4][0-9]|[01]?[0-9][0-9]?)\.){3}(?:25[0-5]|2[0-4][0-9]|[01]?[0-9][0-9]?|[a-z0-9-]*[a-z0-9]:(?:[\x01-\x08\x0b\x0c\x0e-\x1f\x21-\x5a\x53-\x7f]|\\[\x01-\x09\x0b\x0c\x0e-\x7f])+)\])
+                  #type: email
+                tests:
+                  - invalid_percentage < 0.1
+          sparkConf:
+            - spark.serializer: org.apache.spark.serializer.KryoSerializer
+            - spark.sql.shuffle.partitions: "10"
+            - spark.memory.storageFraction: "0.1"
+            - spark.memory.fraction: "0.1"
+            - spark.shuffle.memoryFraction: "0.2"

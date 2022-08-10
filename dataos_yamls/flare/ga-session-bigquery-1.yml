@@ -1,0 +1,88 @@
+version: v1beta1
+name: wf-bigquery-retail
+type: workflow
+description: To read data from bigquery
+tags:
+  - bigquery
+  - ga_session
+workflow:
+  # schedule:
+  #   cron: '*/7 * * * *'
+  #   endOn: '2022-07-15T00:00:00Z'
+  #   concurrencyPolicy: Forbid
+  title: BigQuery Workflow
+  dag:
+    - name: read-bigquery-retail
+      title: Read Bigquery GA Session Dataset
+      description: To read ga Session data from BQ
+      spec:
+        tags:
+          - bigquery
+          - connect
+        stack: flare:1.0
+        envs:
+          # HERA_SSL: "false"
+          # HERA_BASE_URL: "https://frankly-suited-oryx.dataos.io/hera"
+        flare:
+          driver:
+            coreLimit: 2200m
+            cores: 2
+            memory: 6000m
+          executor:
+            coreLimit: 2200m
+            cores: 2
+            instances: 8
+            memory: 6000m
+          job:
+            inputs:
+              - name: ga_input
+                dataset: dataos://gabigquery:gadata/gadatable
+                # incremental:
+                #   context: ga_session_incremental
+                #   sql: select * from ga_session_incremental_2 where date = '$|start|'
+                #   keys:
+                #     - name: start
+                #       sql: select "20210701"
+
+                #     - name: end
+                #       sql: select date_format(date_add(to_date('$|start|', 'yyyyMMdd'),1), 'yyyyMMdd')
+                #   state:
+                #     - key: start
+                #       value: end
+
+            logLevel: INFO
+            outputs:
+              - name: ga_session_dataset
+                depot: dataos://icebase:merchandise_retail?acl=rw
+            steps:
+              - sink:
+                  - sequenceName: ga_input
+                    datasetName: ga_session_dataset
+                    outputName: ga_session_dataset
+                    outputType: Iceberg
+                    description: GA Session Dataset from BigQuery
+                    title: GA Session Dataset
+                    tags:
+                      - bigquery
+                      - ga_session
+                    outputOptions:
+                      saveMode: overwrite
+                      sort:
+                        mode: partition
+                        columns:
+                          - name: date
+                            order: asc
+                      partitionSpec:
+                      - type: identity
+                        column: date
+
+    - name: dataos-tool-from-bq
+      spec:
+        stack: toolbox
+        toolbox:
+          dataset: dataos://icebase:merchandise_retail/ga_session_dataset?acl=rw
+          action:
+            name: set_version
+            value: latest
+      dependencies:
+        - read-bigquery-retail

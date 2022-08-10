@@ -1,0 +1,22 @@
+version: v1
+name: gabigquery
+type: depot
+tags:
+  - googleanalytics
+  - bigquery
+owner: balaji
+layer: user
+depot:
+  type: BIGQUERY                                  # Depot type
+  description: contains sample google analytics data ingested from bigquery
+  external: true
+  connectionSecret:                               # Data source specific configurations
+    - acl: rw
+      type: key-value-properties
+      data:
+        projectid: dataos-346613
+        email: balaji@stacknexus.io
+      files:
+        json_keyfile: ./depot/secrets/dataos-346613-97989dfd4baa.json
+  spec:                                              # Data source specific configurations
+      project: dataos-346613

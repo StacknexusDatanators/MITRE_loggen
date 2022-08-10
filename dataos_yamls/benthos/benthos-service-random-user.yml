@@ -1,0 +1,83 @@
+version: v1beta1
+name: random-user
+type: service
+tags:
+  - service
+description: Random User
+service:
+  title: Test  API
+  replicas: 1
+  servicePort: 9876
+  resources:
+    requests:
+      cpu: 100m
+      memory: 128Mi
+    limits:
+      cpu: 1000m
+      memory: 1024Mi
+  ingress:
+    enabled: true
+    path: /random-user
+    noAuthentication: true
+    annotations:
+      konghq.com/strip-path: "false"
+      kubernetes.io/ingress.class: kong
+  stack: benthos
+  logLevel: DEBUG
+  tags:
+    - service
+    - random-user
+  benthos:
+    input:
+        http_client:
+          url: https://randomuser.me/api/
+          verb: GET
+          headers:
+            Content-Type: application/octet-stream
+
+    pipeline:
+      processors:
+
+        - bloblang: meta status_code = 200
+
+        - log:
+            level: DEBUG
+            message: "received message: ${!meta()}"
+
+        - bloblang: |
+            root.id = uuid_v4()
+            root.title = this.results.0.name.title.or("")
+            root.first_name = this.results.0.name.first.or("")
+            root.last_name = this.results.0.name.last.("")
+            root.gender = this.results.0.gender.or("")
+            root.email = this.results.0.email.or("")
+            root.city = this.results.0.location.city.or("")
+            root.state = this.results.0.location.state.or("")
+            root.country = this.results.0.location.country.or("")
+            root.postcode = this.results.0.location.postcode.or("").string()
+            root.age = this.results.0.age.or("").string()
+            root.phone = this.results.0.phone.or("").string()
+        - log:
+            level: INFO
+            message: 'payload: ${! json() }'
+
+
+    output:
+      - broker:
+          pattern: fan_out
+          outputs:
+          - plugin:
+              address: dataos://fastbase:default/random_users01
+              metadata:
+                auth:
+                  token:
+                    enabled: true
+                    token: dG9rZW5fZXh0ZXJuYWxseV9leHRyZW1lbHlfZ3JlYXRfZHJha2UuYjIxNmU5ZWEtNTVjMS00YmZmLWIyNDctYzUwY2MxMjU0NWIx
+                description: Random users data
+                format: AVRO
+                schema: "{\"type\":\"record\",\"name\":\"default\",\"namespace\":\"defaultNamespace\",\"fields\":[{\"name\":\"id\",\"type\":\"string\"},{\"name\":\"title\",\"type\":\"string\"},{\"name\":\"first_name\",\"type\":\"string\"},{\"name\":\"last_name\",\"type\":\"string\"}, {\"name\":\"gender\",\"type\":\"string\"},{\"name\":\"email\",\"type\":\"string\"},{\"name\":\"city\",\"type\":\"string\"},{\"name\":\"state\",\"type\":\"string\"},{\"name\":\"country\",\"type\":\"string\"},{\"name\":\"postcode\",\"type\":\"string\"},{\"name\":\"age\",\"type\":\"string\"},{\"name\":\"phone\",\"type\":\"string\"}]}"
+                schemaLocation: http://registry.url/schemas/ids/12
+                title: Random Uses Info
+                type: STREAM
+            type: dataos_depot
+          - stdout: {}

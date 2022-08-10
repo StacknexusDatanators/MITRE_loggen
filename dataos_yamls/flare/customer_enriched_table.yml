@@ -1,0 +1,141 @@
+version: v1beta1
+name: wf-enriched-ga-customer
+type: workflow
+description: transform data from google analytics depot for easier aggregations on streamlit
+tags:
+  - googleanalytics
+  - streamlit
+  - observability
+  - retail
+  - customer
+workflow:
+  dag:
+    - name: ga-visits-transform
+      title: read visits from google analytics
+      description: Reads data from google analytics for visits in streamlit
+      spec:
+        tags:
+          - googleanalytics
+          - connect
+        stack: flare:1.0
+        envs:
+          HERA_SSL: "false"
+          HERA_BASE_URL: "https://frankly-suited-oryx.dataos.io/hera"
+        flare:
+          driver:
+            coreLimit: 1200m
+            cores: 1
+            memory: 1000m
+          executor:
+            coreLimit: 1200m
+            cores: 1
+            instances: 5
+            memory: 1000m
+          job:
+            inputs:
+              - name: ga_input
+                dataset: dataos://icebase:merchandise_retail/ga_session_dataset
+                format: iceberg
+            logLevel: INFO
+            outputs:
+              - name: ga_customer
+                depot: dataos://icebase:merchandise_retail?acl=rw
+            steps:
+              - sink:
+                  - sequenceName: ga_data_customer
+                    datasetName: customer_merchandise
+                    outputName: customer_merchandise
+                    outputType: Iceberg
+                    description: ga data for observability
+                    title: ga observability
+                    tags:
+                      - googleanalytics
+                      - retail
+
+                    outputOptions:
+                      saveMode: overwrite
+                sequence:
+                  - name: ga_data_customer
+                    sql: select
+          fullVisitorId,
+          userId,
+          visitorId,
+          visitNumber,
+          visitId,
+          visitStartTime,
+          date,
+          visits,
+          pageviews,
+          timeOnSite,
+          bounces,
+          newVisits,
+          screenviews,
+          uniqueScreenviews,
+          timeOnScreen,
+          sessionQualityDim,
+          referralPath,
+          campaign,
+          source,
+          medium,
+          keyword,
+          isTrueDirect,
+          campaignCode,
+          browser,
+          browserVersion,
+          browserSize,
+          operatingSystem,
+          operatingSystemVersion,
+          isMobile,
+          mobileDeviceBranding,
+          mobileDeviceModel,
+          mobileInputSelector,
+          mobileDeviceInfo,
+          language,
+          screenColors,
+          screenResolution,
+          deviceCategory,
+          continent,
+          subContinent,
+          country,
+          region,
+          metro,
+          city,
+          cityId,
+          networkDomain,
+          latitude,
+          longitude,
+          networkLocation,
+          hitNumber,
+          time,
+          hour,
+          minute,
+          isEntrance,
+          isExit,
+          referer,
+          pagePath,
+          hostname,
+          pageTitle,
+          searchKeyword,
+          searchCategory,
+          productSKU,
+          isImpression,
+          isClick,
+          socialInteractionNetwork,
+          socialInteractionAction,
+          socialInteractions,
+          socialInteractionTarget,
+          socialNetwork,
+          uniqueSocialInteractions,
+          hasSocialSourceReferral,
+          socialInteractionNetworkAction,
+          from ga_input
+    - name: dataos-tool-from-gatrans
+      spec:
+        stack: toolbox
+        toolbox:
+          dataset: dataos://icebase:merchandise_retail/ga_observability?acl=rw
+          action:
+            name: set_version
+            value: latest
+      dependencies:
+        - ga-visits-transform

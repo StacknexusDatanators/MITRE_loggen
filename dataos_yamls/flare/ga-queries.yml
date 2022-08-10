@@ -1,0 +1,462 @@
+
+    - name: Totals
+    sql_query: >
+      /*totals*/
+      SELECT
+        concat(fullvisitorid, cast(visitstarttime AS varchar)) "session_id",
+        totals.visits "visits",
+        totals.hits "hits",
+        totals.pageviews "page_views",
+        totals.timeOnSite "time_on_site",
+        totals.bounces "bounces",
+        totals.transactions "transactions",
+        totals.transactionRevenue "transaction_revenue",
+        totals.newVisits "new_visits",
+        totals.screenviews "screen_views",
+        totals.uniqueScreenviews "unique_screen_views",
+        totals.timeOnScreen "time_on_screen",
+        totals.totalTransactionRevenue "total_transaction_revenue",
+        totals.sessionQualityDim "session_quality_dim"
+      FROM
+        "icebase"."ga_session".ga_sessions
+        CROSS JOIN unnest(ARRAY[totals]) AS totals
+
+
+  - name: TrafficSource
+    sql_query: >
+      /*TrafficSource*/
+      SELECT
+        concat(fullvisitorid, cast(visitstarttime AS varchar)) "session_id",
+        trafficsource.referralPath "referral_path",
+        trafficsource.campaign "campaign",
+        trafficsource.source "source",
+        trafficsource.medium "medium",
+        trafficsource.keyword "keyword",
+        trafficsource.adContent "ad_content",
+        trafficsource.isTrueDirect "is_true_direct",
+        trafficsource.campaignCode "is_true_direct"
+      FROM
+        "icebase"."ga_session".ga_sessions
+        CROSS JOIN unnest(ARRAY[trafficsource]) AS trafficsource
+
+  - name: Device
+    sql_query: >   
+      /*Device*/
+      SELECT
+        concat(fullvisitorid, cast(visitstarttime AS varchar)) "session_id",
+        device.operatingSystem "operating_system",
+        device.browser "browser",
+        device.deviceCategory "device_category",
+        device.isMobile "is_mobile"
+      FROM
+        "icebase"."ga_session".ga_sessions
+        CROSS JOIN unnest(ARRAY[device]) AS device
+
+  - name: GeoNetwork
+    sql_query: >
+      /*GeoNetwork*/
+      SELECT
+        concat(fullvisitorid, cast(visitstarttime AS varchar)) "session_id",
+        geonetwork.continent "continent",
+        geonetwork.subContinent "sub_continent",
+        geonetwork.country "country",
+        geonetwork.region "region",
+        geonetwork.metro "metro",
+        geonetwork.city "city",
+        geonetwork.cityId "city_id",
+        geonetwork.networkDomain "network_domain",
+        geonetwork.latitude "latitude",
+        geonetwork.longitude "longitude",
+        geonetwork.networkLocation "network_location"
+      FROM
+        "icebase"."ga_session".ga_sessions
+        CROSS JOIN unnest(ARRAY[geonetwork]) AS geonetwork     
+
+
+  - name: Hits
+    sql_query: >
+      /* hits */
+      WITH hits_explode AS (
+        SELECT
+          fullvisitorid,
+          date,
+          visitstarttime,
+          hits.*
+        FROM
+          icebase.ga_session.ga_sessions
+          CROSS JOIN unnest(hits) AS hits
+      )
+      SELECT
+        concat(fullvisitorid, cast(visitstarttime AS varchar)) AS session_id,
+        concat(fullvisitorid, cast(visitstarttime AS varchar), cast(hitnumber AS varchar)) AS uuid,
+        hitnumber "hit_number",
+        fullvisitorid "full_visitor_id",
+        time,
+        hour,
+        minute,
+        isinteraction "is_interaction",
+        isentrance "is_entrance",
+        isexit "is_exit",
+        referer,
+        type
+      FROM
+        hits_explode
+
+
+  - name: Product
+    sql_query: >
+      /* Product */
+      WITH hits_explode AS (
+        SELECT
+          fullvisitorid,
+          date,
+          visitstarttime,
+          hits.*
+        FROM
+          icebase.ga_session.ga_sessions
+          CROSS JOIN unnest(hits) AS hits
+      )
+      SELECT
+        concat(fullvisitorid, cast(visitstarttime AS varchar), cast(hitnumber as varchar)) AS uuid,
+        product.productSKU "product_sku",
+        product.v2ProductName "v2_product_name",
+        product.v2ProductCategory "v2_product_category",
+        product.productVariant "product_varient",
+        product.productBrand "product_brand",
+        product.productRevenue "product_revenue",
+        product.localProductRevenue "local_product_revenue",
+        product.localProductPrice "local_product_price",
+        product.productQuantity "product_quantity",
+        product.productRefundAmount "product_refund_amount",
+        product.localProductRefundAmount "local_product_refund_amount",
+        product.isImpression "is_impression",
+        product.productListName "product_list_name",
+        product.productListPosition "product_list_position"
+      FROM
+        hits_explode
+        CROSS JOIN unnest(product) AS product
+
+  - name: Transaction
+    sql_query: >
+      WITH hits_explode AS (
+        SELECT
+          fullvisitorid,
+          date,
+          visitstarttime,
+          hits.*
+        FROM
+          icebase.ga_session.ga_sessions
+          CROSS JOIN unnest(hits) AS hits
+      ),
+      TRANSACTION AS (
+        SELECT
+          concat(fullvisitorid, cast(visitstarttime AS varchar)) AS sessionid,
+          hitnumber,
+          transaction.*
+        FROM
+          hits_explode
+          CROSS JOIN unnest(ARRAY[TRANSACTION]) AS TRANSACTION
+        ORDER BY
+          transactionid DESC
+      )
+      SELECT
+        concat(sessionid, cast(hitnumber AS varchar)) AS uuid,
+        sessionid "session_id",
+        hitnumber "hit_number",
+        transactionId "transaction_id",
+        transactionRevenue "transaction_revenue",
+        transactionTax "transaction_tax",
+        transactionShipping "transaction_shipping",
+        affiliation "affiliation",
+        currencyCode "currency_code",
+        localTransactionRevenue "local_transaction_revenue",
+        localTransactionTax "local_transaction_tax",
+        localTransactionShipping "local_transaction_shipping",
+        transactionCoupon "transaction_coupon"
+      FROM
+        TRANSACTION
+
+  
+  
+  - name: ECommerceAction
+    sql_query: >
+      /* ECommerceAction + EventInfo */
+      WITH hits_explode AS (
+        SELECT
+          fullvisitorid,
+          date,
+          visitstarttime,
+          hits.*
+        FROM
+          icebase.ga_session.ga_sessions
+          CROSS JOIN unnest(hits) AS hits
+      ),
+      eCommerceAction AS (
+        SELECT
+          concat(fullvisitorid, cast(visitstarttime AS varchar), cast(hitnumber AS varchar)) AS uuid,
+          eCommerceAction.action_type "action_type",
+          eCommerceAction.step "step",
+          eCommerceAction.option "option"
+        FROM
+          hits_explode
+          CROSS JOIN unnest(ARRAY[eCommerceAction]) AS eCommerceAction
+      ),
+      eventInfo AS (
+        SELECT
+          concat(fullvisitorid, cast(visitstarttime AS varchar), cast(hitnumber AS varchar)) "uuid",
+          eventInfo.eventAction "event_action",
+          eventInfo.eventCategory "event_category",
+          eventInfo.eventLabel "event_label"
+        FROM
+          hits_explode
+          CROSS JOIN unnest(ARRAY[eventInfo]) AS eventInfo
+      )
+      SELECT
+        eCommerceAction.uuid,
+        eCommerceAction.action_type,
+        eCommerceAction.step,
+        eCommerceAction.option,
+        eventInfo.event_action,
+        eventInfo.event_category,
+        eventInfo.event_label
+      FROM
+        eCommerceAction
+        LEFT JOIN eventInfo ON eCommerceAction.uuid = eventInfo.uuid
+
+
+  - name: LatencyTracking
+    sql_query: >
+      /* LatencyTracking */
+      WITH hits_explode AS (
+        SELECT
+          fullvisitorid,
+          date,
+          visitstarttime,
+          hits.*
+        FROM
+          icebase.ga_session.ga_sessions
+          CROSS JOIN unnest(hits) AS hits
+      )
+      SELECT
+        concat(fullvisitorid, cast(visitstarttime AS varchar), cast(hitnumber AS varchar)) AS uuid,
+        latencyTracking.domContentLoadedTime "dom_content_loaded_time",
+        latencyTracking.domInteractiveTime "dom_interactive_time",
+        latencyTracking.domLatencyMetricsSample "dom_latency_metrics_sample",
+        latencyTracking.domainLookupTime "domain_lookup_time",
+        latencyTracking.pageDownloadTime "page_download_time",
+        latencyTracking.pageLoadSample "page_load_sample",
+        latencyTracking.pageLoadTime "page_load_time",
+        latencyTracking.redirectionTime "redirection_time",
+        latencyTracking.serverConnectionTime "serever_connection_time",
+        latencyTracking.serverResponseTime "server_response_time",
+        latencyTracking.speedMetricsSample "speed_metrics_sample"
+      FROM
+        hits_explode
+        CROSS JOIN unnest(ARRAY[latencyTracking]) AS latencyTracking
+
+
+  - name: Refund
+    sql_query: >
+        /* Refund */
+        WITH hits_explode AS (
+          SELECT
+            fullvisitorid,
+            date,
+            visitstarttime,
+            hits.*
+          FROM
+            icebase.ga_session.ga_sessions
+            CROSS JOIN unnest(hits) AS hits
+        )
+        SELECT
+          concat(fullvisitorid, cast(visitstarttime AS varchar), cast(hitnumber AS varchar)) "uuid",
+          refund.refundAmount "refund_amount",
+          refund.localRefundAmount "local_refund_amount"
+        FROM
+          hits_explode
+          CROSS JOIN unnest(ARRAY[Refund]) AS refund
+
+  - name: Social
+    sql_query: >
+      /* Social */
+      WITH hits_explode AS (
+        SELECT
+          fullvisitorid,
+          date,
+          visitstarttime,
+          hits.*
+        FROM
+          icebase.ga_session.ga_sessions
+          CROSS JOIN unnest(hits) AS hits
+      )
+      SELECT
+      concat(fullvisitorid, cast(visitstarttime AS varchar), cast(hitnumber AS varchar)) AS uuid,
+      social.socialNetwork "social_network",
+      social.hasSocialSourceReferral "has_social_source_referral",
+      social.socialInteractionNetworkAction "social_interaction_network_action"
+      FROM
+        hits_explode
+        CROSS JOIN unnest(ARRAY[social]) AS social
+
+
+  - name: Page
+    sql_query: >
+      /* Page */
+      WITH hits_explode AS (
+        SELECT
+          fullvisitorid,
+          date,
+          visitstarttime,
+          hits.*
+        FROM
+          icebase.ga_session.ga_sessions
+          CROSS JOIN unnest(hits) AS hits
+      )
+      SELECT
+        concat(fullvisitorid, cast(visitstarttime AS varchar), cast(hitnumber AS varchar)) "uuid",
+        page.pagePath "page_path",
+        page.hostname "host_name",
+        page.pageTitle "page_title",
+        page.searchKeyword "search_keyword",
+        page.searchCategory "search_category",
+        page.pagePathLevel1 "page_path_level_1",
+        page.pagePathLevel2 "page_path_level_2",
+        page.pagePathLevel3 "page_path_level_3",
+        page.pagePathLevel4 "page_path_level_4"
+      FROM
+        hits_explode
+        CROSS JOIN unnest(ARRAY[page]) AS page
+
+
+  - name: Promotion
+    sql_query: >
+      /* Promotion */
+      WITH hits_explode AS (
+        SELECT
+          fullvisitorid,
+          date,
+          visitstarttime,
+          hits.*
+        FROM
+          icebase.ga_session.ga_sessions
+          CROSS JOIN unnest(hits) AS hits
+      )
+      SELECT
+        concat(fullvisitorid, cast(visitstarttime AS varchar), cast(hitnumber AS varchar)) "uuid",
+        promotion.promoId "promo_id",
+        promotion.promoName "promo_name",
+        promotion.promoCreative "promo_creative",
+        promotion.promoPosition "promo_position"
+      FROM
+        hits_explode
+        CROSS JOIN unnest(promotion) AS promotion
+
+  - name: Item
+    sql_query: >
+      /* Item */
+      WITH hits_explode AS (
+        SELECT
+          fullvisitorid,
+          date,
+          visitstarttime,
+          hits.*
+        FROM
+          icebase.ga_session.ga_sessions
+          CROSS JOIN unnest(hits) AS hits
+      )
+      SELECT
+        concat(fullvisitorid, cast(visitstarttime AS varchar), cast(hitnumber AS varchar)) "uuid",
+        item.transactionId "transaction_id",
+        item.productName "product_name",
+        item.productCategory "product_category",
+        item.productSku "product_sku",
+        item.itemQuantity "item_quantity",
+        item.itemRevenue "item_revenue",
+        item.currencyCode "currency_code",
+        item.localItemRevenue "local_item_revenue"
+      FROM
+        hits_explode
+        CROSS JOIN unnest(ARRAY[item]) AS item
+
+
+  - name: ContentGroup
+    sql_query: >
+      /* ContentGroup */
+      WITH hits_explode AS (
+        SELECT
+          fullvisitorid,
+          date,
+          visitstarttime,
+          hits.*
+        FROM
+          icebase.ga_session.ga_sessions
+          CROSS JOIN unnest(hits) AS hits
+      )
+      SELECT
+        concat(fullvisitorid, cast(visitstarttime AS varchar), cast(hitnumber AS varchar)) "uuid",
+        contentGroup.contentGroup1 "content_group1",
+        contentGroup.contentGroup2 "content_group2",
+        contentGroup.contentGroup3 "content_group3",
+        contentGroup.contentGroup4 "content_group4",
+        contentGroup.contentGroup5 "content_group5",
+        contentGroup.previousContentGroup1 "previous_content_group_1",
+        contentGroup.previousContentGroup2 "previous_content_group_2",
+        contentGroup.previousContentGroup3 "previous_content_group_3",
+        contentGroup.previousContentGroup4 "previous_content_group_4",
+        contentGroup.previousContentGroup5 "previous_content_group_5",
+        contentGroup.contentGroupUniqueViews1 "content_group_unique_views_1",
+        contentGroup.contentGroupUniqueViews2 "content_group_unique_views_2",
+        contentGroup.contentGroupUniqueViews3 "content_group_unique_views_3",
+        contentGroup.contentGroupUniqueViews4 "content_group_unique_views_4",
+        contentGroup.contentGroupUniqueViews5 "content_group_unique_views_5"
+      FROM
+        hits_explode
+        CROSS JOIN unnest(ARRAY[contentGroup]) AS contentGroup
+
+
+  - name: AppInfo
+    sql_query: >
+      /* AppInfo */
+      WITH hits_explode AS (
+        SELECT
+          fullvisitorid,
+          date,
+          visitstarttime,
+          hits.*
+        FROM
+          icebase.ga_session.ga_sessions
+          CROSS JOIN unnest(hits) AS hits
+      )
+      SELECT
+        concat(fullvisitorid, cast(visitstarttime AS varchar), cast(hitnumber AS varchar)) "uuid",
+        appInfo.exitScreenName "exit_screen_name",
+        appInfo.landingScreenName "exit_screen_name",
+        appInfo.screenDepth "screen_depth",
+        appInfo.screenName "screen_name"
+      FROM
+        hits_explode
+        CROSS JOIN unnest(ARRAY[appInfo]) AS appInfo
+
+
+
+  - name: EventInfo
+    sql_query: >
+      /* EventInfo */
+      WITH hits_explode AS (
+        SELECT
+          fullvisitorid,
+          date,
+          visitstarttime,
+          hits.*
+        FROM
+          icebase.ga_session.ga_sessions
+          CROSS JOIN unnest(hits) AS hits
+      )
+      SELECT
+        concat(fullvisitorid, cast(visitstarttime AS varchar), cast(hitnumber AS varchar)) "uuid",
+        eventInfo.eventAction "event_action",
+        eventInfo.eventCategory "event_category",
+        eventInfo.eventLabel "event_label"
+      FROM
+        hits_explode
+        CROSS JOIN unnest(ARRAY[eventInfo]) AS eventInfo

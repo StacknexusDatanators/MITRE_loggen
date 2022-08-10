@@ -1,0 +1,13 @@
+version: v1beta1
+name: dataos-tool-prf
+type: workflow
+workflow:
+  dag:
+  - name: dataos-tool-profiles
+    spec:
+      stack: toolbox
+      toolbox:
+        dataset: dataos://icebase:sys01/profiles?acl=rw
+        action:
+          name: set_version
+          value: latest

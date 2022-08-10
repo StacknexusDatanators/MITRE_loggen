@@ -1,0 +1,53 @@
+---
+version: v1beta1
+name: postgres-read-write
+type: workflow
+tags:
+  - bq
+  - dataset
+description: This job read and write data from to postgres
+title: Read Write Postgres
+workflow:
+  dag:
+    - name: read-postgres
+      title: Read Postgres
+      description: This job read data from postgres
+      spec:
+        tags:
+          - Connect
+        stack: flare:2.0
+        flare:
+          job:
+            explain: true
+            inputs:
+              - name: input
+                dataset: dataos://blender:public/datasets
+                options:
+                  driver: org.postgresql.Driver
+
+            logLevel: INFO
+            outputs:
+              - name: output01
+                depot: dataos://icebase:sample?acl=rw
+            steps:
+              - sink:
+                  - sequenceName: input
+                    datasetName: datasets_from_postgres
+                    outputName: output01
+                    outputType: Iceberg
+                    outputOptions:
+                      saveMode: overwrite
+                    description: Data set from blender
+                    tags:
+                      - Connect
+                    title: Postgres Dataset
+    - name: dataos-tool-from-postgres
+      spec:
+        stack: toolbox
+        toolbox:
+          dataset: dataos://icebase:sample/datasets_from_postgres?acl=rw
+          action:
+            name: set_version
+            value: latest
+      dependencies:
+        - read-postgres

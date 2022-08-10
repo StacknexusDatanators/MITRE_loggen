@@ -1,0 +1,11 @@
+version: v1beta1
+name: retaildb                                     # database name
+type: database
+description: Merchandise retail database for POC solution
+tags:
+  - database
+database:
+  migrate:
+    includes:
+      - ./database/migrations
+    command: up
