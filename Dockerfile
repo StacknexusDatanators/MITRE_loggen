@@ -20,7 +20,8 @@ RUN crontab /etc/cron.d/logcron
 
 RUN touch /var/log/loggen.log
 
-CMD cron &
+CMD cron && tail -f /var/log/loggen.log
+CMD service cron start
 
 WORKDIR /logapi
 
