@@ -6,7 +6,7 @@ import sqlite3 as lite
 print("running log generator...")
 
 
-con = lite.connect('./testdb.db')
+con = lite.connect('/loggen/testdb.db')
 
 print("connected to db")
 

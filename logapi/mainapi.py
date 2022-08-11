@@ -5,7 +5,7 @@ import numpy as np
 import sqlite3 as lite
 import os
 
-con = lite.connect('../loggen/testdb.db')
+con = lite.connect('/loggen/testdb.db')
 
 
 app = FastAPI()
@@ -14,12 +14,13 @@ app = FastAPI()
 async def hello():
     return "Welcome to MITRE mock api"
 def check_db():
+    print("checking db")
     qr = "SELECT name FROM sqlite_master WHERE type='table' AND name='eventlogs';"
     cur = con.execute(qr)
 
-    if len(cur.fetchall()) != 0:
+    if len(cur.fetchall()) == 0:
         print('running loggen initially')
-        os.system("/usr/local/bin/python /loggen/loggen.py")
+        os.system("python /loggen/loggen.py")
 
 @app.post('/logs_last_time', status_code = 200)
 async def get_logs_lt(last_time:datetime):

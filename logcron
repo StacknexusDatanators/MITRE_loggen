@@ -1,1 +1,1 @@
-*/10 * * * * /usr/local/bin/python /loggen/loggen.py >> /var/log/loggen.log 2>&1
+* * * * * /usr/bin/python /loggen/loggen.py >> /var/log/loggen.log 2>&1
