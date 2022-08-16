@@ -20,7 +20,7 @@ def check_db():
 
     if len(cur.fetchall()) == 0:
         print('running loggen initially')
-        os.system("python /loggen/loggen.py")
+        os.system("cron")
 
 @app.post('/logs_last_time', status_code = 200)
 async def get_logs_lt(last_time:datetime):
